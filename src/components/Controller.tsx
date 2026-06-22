@@ -2,20 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import Peer, { type DataConnection } from "peerjs";
+import { useSearchParams } from "next/navigation";
 
+type SheetDoc = { id: string; name: string; driveId: string };
 type StateMsg = {
   type: "state";
+  docs: SheetDoc[];
+  currentId: string | null;
   page: number;
-  total: number;
-  fileName: string | null;
+  numPages: number;
 };
 
-export default function Controller({ sessionId }: { sessionId: string }) {
+export default function Controller() {
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("id");
   const [status, setStatus] = useState<
     "idle" | "connecting" | "connected" | "error"
   >("idle");
   const [state, setState] = useState<StateMsg | null>(null);
-  const [gotoInput, setGotoInput] = useState("");
   const connRef = useRef<DataConnection | null>(null);
   const peerRef = useRef<Peer | null>(null);
 
@@ -62,10 +66,13 @@ export default function Controller({ sessionId }: { sessionId: string }) {
     );
   }
 
+  const docs = state?.docs ?? [];
+  const current = docs.find((d) => d.id === state?.currentId) ?? null;
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="border-b border-border px-5 py-4">
-        <h1 className="text-lg font-semibold">PDF Remote</h1>
+        <h1 className="text-lg font-semibold">Doc Remote</h1>
         <div className="mt-1 flex items-center gap-2 text-xs">
           <span
             className={`h-2 w-2 rounded-full ${
@@ -80,79 +87,37 @@ export default function Controller({ sessionId }: { sessionId: string }) {
           />
           <span className="text-muted-foreground capitalize">{status}</span>
         </div>
-        {state?.fileName && (
-          <p className="mt-2 truncate text-sm text-muted-foreground">
-            📄 {state.fileName}
+        {current && (
+          <p className="mt-2 truncate text-sm">
+            <span className="text-muted-foreground">Now: </span>
+            <span className="font-medium">{current.name}</span>
+            {state && state.numPages > 0 && (
+              <span className="text-muted-foreground">
+                {" "}
+                · page {state.page}/{state.numPages}
+              </span>
+            )}
           </p>
         )}
       </header>
 
-      <main className="flex flex-1 flex-col gap-6 p-5">
-        <div className="rounded-lg border border-border bg-card p-6 text-center">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Page
-          </div>
-          <div className="mt-1 text-5xl font-bold">
-            {state?.page ?? "—"}
-            <span className="text-2xl text-muted-foreground">
-              {" "}
-              / {state?.total ?? "—"}
-            </span>
-          </div>
-        </div>
-
+      <main className="flex flex-1 flex-col gap-4 p-4">
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => send({ type: "prev" })}
-            disabled={status !== "connected"}
-            className="rounded-lg bg-secondary py-8 text-2xl font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
+            onClick={() => send({ type: "page", delta: -1 })}
+            disabled={status !== "connected" || !current}
+            className="rounded-lg bg-secondary py-8 text-xl font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
           >
-            ← Prev
+            ← Prev page
           </button>
           <button
-            onClick={() => send({ type: "next" })}
-            disabled={status !== "connected"}
-            className="rounded-lg bg-primary py-8 text-2xl font-semibold text-primary-foreground active:scale-95 disabled:opacity-40"
+            onClick={() => send({ type: "page", delta: 1 })}
+            disabled={status !== "connected" || !current}
+            className="rounded-lg bg-primary py-8 text-xl font-semibold text-primary-foreground active:scale-95 disabled:opacity-40"
           >
-            Next →
+            Next page →
           </button>
         </div>
-
-        <button
-          onClick={() => send({ type: "fullscreen" })}
-          disabled={status !== "connected"}
-          className="rounded-lg border border-border py-4 text-sm font-medium hover:bg-accent disabled:opacity-40"
-        >
-          Fullscreen presenter
-        </button>
-
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const n = parseInt(gotoInput, 10);
-            if (!Number.isNaN(n)) send({ type: "goto", page: n });
-            setGotoInput("");
-          }}
-        >
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={state?.total ?? undefined}
-            value={gotoInput}
-            onChange={(e) => setGotoInput(e.target.value)}
-            placeholder="Go to page…"
-            className="flex-1 rounded-md border border-border bg-background px-3 py-3 text-base"
-          />
-          <button
-            type="submit"
-            disabled={status !== "connected" || !gotoInput}
-            className="rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-40"
-          >
-            Go
-          </button>
-        </form>
 
         {status === "error" && (
           <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
