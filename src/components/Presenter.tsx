@@ -70,7 +70,27 @@ export default function Presenter() {
       config: {
         iceServers: [
           {
-            urls: "stun:stun.l.google.com:19302",
+            urls: "stun:stun.relay.metered.ca:80",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:80",
+            username: "954e5017148bedbd592a8c97",
+            credential: "U77mjTFJnnxczS1c",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:80?transport=tcp",
+            username: "954e5017148bedbd592a8c97",
+            credential: "U77mjTFJnnxczS1c",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:443",
+            username: "954e5017148bedbd592a8c97",
+            credential: "U77mjTFJnnxczS1c",
+          },
+          {
+            urls: "turns:global.relay.metered.ca:443?transport=tcp",
+            username: "954e5017148bedbd592a8c97",
+            credential: "U77mjTFJnnxczS1c",
           },
         ],
       },
