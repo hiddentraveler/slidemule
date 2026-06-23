@@ -26,7 +26,15 @@ export default function Controller() {
   useEffect(() => {
     if (!sessionId) return;
     setStatus("connecting");
-    const peer = new Peer();
+    const peer = new Peer({
+      config: {
+        iceServers: [
+          {
+            urls: "stun:stun.l.google.com:19302",
+          },
+        ],
+      },
+    });
     peerRef.current = peer;
 
     peer.on("open", () => {

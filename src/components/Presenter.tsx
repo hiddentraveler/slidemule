@@ -66,7 +66,15 @@ export default function Presenter() {
   }, []);
 
   useEffect(() => {
-    const peer = new Peer();
+    const peer = new Peer({
+      config: {
+        iceServers: [
+          {
+            urls: "stun:stun.l.google.com:19302",
+          },
+        ],
+      },
+    });
     peerRef.current = peer;
 
     peer.on("open", async (id) => {
