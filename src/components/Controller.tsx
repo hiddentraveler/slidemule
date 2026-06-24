@@ -16,6 +16,7 @@ type StateMsg = {
 export default function Controller() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("id");
+  const docId = searchParams.get("doc");
   const [status, setStatus] = useState<
     "idle" | "connecting" | "connected" | "error"
   >("idle");
@@ -24,7 +25,7 @@ export default function Controller() {
   const peerRef = useRef<Peer | null>(null);
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || !docId) return;
     setStatus("connecting");
     const peer = new Peer({
       config: {
@@ -62,6 +63,13 @@ export default function Controller() {
       connRef.current = conn;
       conn.on("open", () => {
         setStatus("connected");
+
+        if (docId) {
+          conn.send({
+            type: "select",
+            docId,
+          });
+        }
         conn.send({ type: "hello" });
       });
       conn.on("data", (raw) => {
@@ -132,14 +140,14 @@ export default function Controller() {
       <main className="flex flex-1 flex-col gap-4 p-4">
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => send({ type: "page", delta: -1 })}
+            onClick={() => send({ type: "page", delta: -1, docId: docId })}
             disabled={status !== "connected" || !current}
             className="rounded-lg bg-secondary py-8 text-xl font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
           >
             ← Prev page
           </button>
           <button
-            onClick={() => send({ type: "page", delta: 1 })}
+            onClick={() => send({ type: "page", delta: 1, docId: docId })}
             disabled={status !== "connected" || !current}
             className="rounded-lg bg-primary py-8 text-xl font-semibold text-primary-foreground active:scale-95 disabled:opacity-40"
           >

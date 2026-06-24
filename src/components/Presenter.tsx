@@ -8,7 +8,7 @@ import DocViewer from "./DocViewer";
 
 type RemoteMessage =
   | { type: "select"; docId: string }
-  | { type: "page"; delta: number }
+  | { type: "page"; delta: number; docId: string }
   | { type: "page-set"; page: number }
   | { type: "fullscreen" }
   | { type: "hello" };
@@ -99,9 +99,6 @@ export default function Presenter() {
 
     peer.on("open", async (id) => {
       setSessionId(id);
-      const url = `${window.location.origin}/control?id=${id}`;
-      const qr = await QRCode.toDataURL(url, { width: 320, margin: 1 });
-      setQrDataUrl(qr);
     });
 
     peer.on("connection", (conn) => {
@@ -112,11 +109,13 @@ export default function Presenter() {
       });
       conn.on("data", (raw) => {
         const msg = raw as RemoteMessage;
-        if (msg.type === "select") {
-          setCurrentId(msg.docId);
-          setPage(1);
-          setNumPages(0);
-        } else if (msg.type === "page") {
+        if (msg.type === "page") {
+          const activeDoc = stateRef.current.currentId;
+
+          if (msg.docId !== activeDoc) {
+            console.log(`docId=${msg.docId}, activeDoc=${activeDoc}`);
+            return;
+          }
           changePage(msg.delta);
         } else if (msg.type === "page-set") {
           setPage(Math.max(1, msg.page));
@@ -140,6 +139,27 @@ export default function Presenter() {
   useEffect(() => {
     broadcastState();
   }, [docs, currentId, page, numPages, broadcastState]);
+
+  // Qr code for each pdf
+  useEffect(() => {
+    if (!sessionId || !currentId) return;
+
+    const generateQr = async () => {
+      const url =
+        `${window.location.origin}/control` +
+        `?id=${sessionId}` +
+        `&doc=${currentId}`;
+
+      const qr = await QRCode.toDataURL(url, {
+        width: 320,
+        margin: 1,
+      });
+
+      setQrDataUrl(qr);
+    };
+
+    generateQr();
+  }, [sessionId, currentId]);
 
   // Keyboard nav on presenter
   useEffect(() => {
@@ -307,7 +327,9 @@ export default function Presenter() {
                 Or open:{" "}
                 <span className="font-mono text-foreground">
                   {typeof window !== "undefined"
-                    ? `${window.location.origin}/control?id=${sessionId}`
+                    ? `${window.location.origin}/control` +
+                      `?id=${sessionId}` +
+                      `&doc=${currentId}`
                     : ""}
                 </span>
               </p>
